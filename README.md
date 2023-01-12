@@ -3,11 +3,11 @@ Collection of clang plugins that I wrote.
 
 ## Contents
 
-1. ListFreeChecker:
+1. ListFreeChecker (Path sensitive checker):
 
    `ListFreeChecker` is used to check if we're freeing a `List *` object with `pfree()` in projects based on Postgres. Since in Postgres 13+, `List` is implemented in array, it makes non-sense to free a list header.
 
-2. ReturnInPgTryBlockChecker:
+2. ReturnInPgTryBlockChecker (Path insensitive checker based on AST-matcher):
 
    `ReturnInPgTryBlockChecker` is used to check if there's a `return` statement in `PG_TRY()` block in projects based on Postgres. It will break PostgreSQL's error stacks.
 
