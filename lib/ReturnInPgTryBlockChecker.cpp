@@ -1,20 +1,15 @@
 //==============================================================================
 // FILE:
-//    HelloWorld.cpp
+//    ReturnInPgTryBlockChecker.cpp
 //
 // DESCRIPTION:
-//    Counts the number of C++ record declarations in the input translation
-//    unit. The results are printed on a file-by-file basis (i.e. for each
-//    included header file separately).
-//
-//    Internally, this implementation leverages llvm::StringMap to map file
-//    names to the corresponding #count of declarations.
+//    Check if there's a return statement in the PG_TRY() block. Using return
+//    statements in PG_TRY() block will break error stacks.
 //
 // USAGE:
-//   clang -cc1 -load <BUILD_DIR>/lib/libHelloWorld.dylib '\'
-//    -plugin hello-world test/HelloWorld-basic.cpp
+//   clang -cc1 -load <BUILD_DIR>/lib/libReturnInPgTryBlockChecker.so '\'
+//    -plugin alpha.postgres.ReturnInPgTryBlockChecker test.c
 //
-// License: The Unlicense
 //==============================================================================
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"

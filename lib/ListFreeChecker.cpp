@@ -9,7 +9,6 @@
 //   clang -cc1 -load libListFreeChecker.so -analyze '\'
 //     -analyzer-checker=alpha.postgres.ListFreeChecker
 //
-// License: The Unlicense
 //==============================================================================
 #include "clang/StaticAnalyzer/Core/BugReporter/BugType.h"
 #include "clang/StaticAnalyzer/Core/Checker.h"
