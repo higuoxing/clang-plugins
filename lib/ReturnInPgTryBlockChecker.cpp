@@ -40,19 +40,6 @@ using namespace clang;
 using namespace ento;
 using namespace clang::ast_matchers;
 
-//-----------------------------------------------------------------------------
-// RecursiveASTVisitor
-//-----------------------------------------------------------------------------
-class ReturnInPgTryBlockASTVisitor
-    : public RecursiveASTVisitor<ReturnInPgTryBlockASTVisitor> {
-public:
-  explicit ReturnInPgTryBlockASTVisitor(ASTContext *Context)
-      : Context(Context) {}
-
-private:
-  ASTContext *Context;
-};
-
 class PgTryBlockMatcherCallback : public MatchFinder::MatchCallback {
 public:
   PgTryBlockMatcherCallback() = default;
@@ -61,12 +48,12 @@ public:
     ASTContext *Ctx = Result.Context;
 
     if (const ReturnStmt *Return =
-            Result.Nodes.getNodeAs<ReturnStmt>("ReturnInPgTryCatch")) {
+            Result.Nodes.getNodeAs<ReturnStmt>("ReturnInPgTryBlock")) {
       // We've found a returnStmt inside PG_TRY block. Let's warn about it.
       DiagnosticsEngine &DE = Ctx->getDiagnostics();
-      unsigned DiagID = DE.getCustomDiagID(
-          DiagnosticsEngine::Error,
-          "return statement is used inside PG_TRY-PG_CATCH block");
+      unsigned DiagID =
+          DE.getCustomDiagID(DiagnosticsEngine::Error,
+                             "return statement is used inside PG_TRY block");
       auto DB = DE.Report(Return->getReturnLoc(), DiagID);
       DB.AddSourceRange(
           CharSourceRange::getCharRange(Return->getSourceRange()));
@@ -86,13 +73,12 @@ public:
             hasCondition(
                 // PG_TRY() will be expanded to the following expression.
                 // if (__sigsetjmp() == 0) {
-                //   any expression that contains return;
                 // }
                 binaryOperator(allOf(hasOperatorName("=="),
                                      hasOperands(callExpr(callee(functionDecl(
                                                      hasName("__sigsetjmp")))),
                                                  integerLiteral(equals(0)))))),
-            hasDescendant(returnStmt().bind("ReturnInPgTryCatch")))
+            hasThen(hasDescendant(returnStmt().bind("ReturnInPgTryBlock"))))
             .bind("PgTryBlock");
 
     F.addMatcher(PgTry, &CB);
@@ -111,6 +97,6 @@ extern "C" __attribute__((visibility("default"))) void
 clang_registerCheckers(CheckerRegistry &registry) {
   registry.addChecker<ReturnInPgTryBlockChecker>(
       /*FullName=*/"alpha.postgres.ReturnInPgTryBlockChecker",
-      /*Desc=*/"Check if there're return statements in PG_TRY-PG_CATCH block",
+      /*Desc=*/"Check if there're return statements in PG_TRY block",
       /*DocsUri=*/"");
 }
