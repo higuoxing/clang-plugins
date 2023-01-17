@@ -20,6 +20,7 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/ASTMatchers/ASTMatchersInternal.h"
+#include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
@@ -31,9 +32,107 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <queue>
+#include <unordered_set>
+
 using namespace clang;
 using namespace ento;
 using namespace clang::ast_matchers;
+
+static void CheckUnsafeBreakStmt(const Stmt *Then, ASTContext *Ctx) {
+  std::queue<const Stmt *> StmtQueue;
+  StmtQueue.push(Then);
+  while (!StmtQueue.empty()) {
+    const Stmt *CurrStmt = StmtQueue.front();
+    StmtQueue.pop();
+
+    if (const BreakStmt *Break = llvm::dyn_cast<BreakStmt>(CurrStmt)) {
+      // We've found a break statement inside PG_TRY block. Let's warn
+      // about it.
+      DiagnosticsEngine &DE = Ctx->getDiagnostics();
+      unsigned DiagID = DE.getCustomDiagID(
+          DiagnosticsEngine::Error,
+          "break statement is used inside PG_TRY block which is unsafe");
+      auto DB = DE.Report(Break->getBreakLoc(), DiagID);
+      DB.AddSourceRange(CharSourceRange::getCharRange(Break->getSourceRange()));
+    }
+
+    // break stataments in while/do-while/for/switch statements are safe.
+    if (llvm::isa<WhileStmt>(CurrStmt) || llvm::isa<DoStmt>(CurrStmt) ||
+        llvm::isa<ForStmt>(CurrStmt) || llvm::isa<SwitchStmt>(CurrStmt)) {
+      continue;
+    }
+
+    for (const Stmt *C : CurrStmt->children()) {
+      StmtQueue.push(C);
+    }
+  }
+}
+
+static void CheckUnsafeContinueStmt(const Stmt *Then, ASTContext *Ctx) {
+  std::queue<const Stmt *> StmtQueue;
+  StmtQueue.push(Then);
+  while (!StmtQueue.empty()) {
+    const Stmt *CurrStmt = StmtQueue.front();
+    StmtQueue.pop();
+
+    if (const ContinueStmt *Continue = llvm::dyn_cast<ContinueStmt>(CurrStmt)) {
+      // We've found a continue statement inside PG_TRY block. Let's warn
+      // about it.
+      DiagnosticsEngine &DE = Ctx->getDiagnostics();
+      unsigned DiagID = DE.getCustomDiagID(
+          DiagnosticsEngine::Error,
+          "continue statement is used inside PG_TRY block which is unsafe");
+      auto DB = DE.Report(Continue->getContinueLoc(), DiagID);
+      DB.AddSourceRange(
+          CharSourceRange::getCharRange(Continue->getSourceRange()));
+    }
+
+    // continue stataments in while/do-while/for statements are safe.
+    if (llvm::isa<WhileStmt>(CurrStmt) || llvm::isa<DoStmt>(CurrStmt) ||
+        llvm::isa<ForStmt>(CurrStmt)) {
+      continue;
+    }
+
+    for (const Stmt *C : CurrStmt->children()) {
+      StmtQueue.push(C);
+    }
+  }
+}
+
+static void CheckUnsafeGotoStmt(const Stmt *Then, ASTContext *Ctx) {
+  std::queue<const Stmt *> StmtQueue;
+  std::unordered_set<const LabelStmt *> LabelDecls;
+  std::unordered_set<const GotoStmt *> GotoStmts;
+  StmtQueue.push(Then);
+  while (!StmtQueue.empty()) {
+    const Stmt *CurrStmt = StmtQueue.front();
+    StmtQueue.pop();
+
+    if (const LabelStmt *Label = llvm::dyn_cast<LabelStmt>(CurrStmt)) {
+      LabelDecls.insert(Label);
+    } else if (const GotoStmt *Goto = llvm::dyn_cast<GotoStmt>(CurrStmt)) {
+      GotoStmts.insert(Goto);
+    }
+
+    for (const Stmt *C : CurrStmt->children()) {
+      StmtQueue.push(C);
+    }
+  }
+
+  // Iterate over GotoStmts to check if we're jumping out of PG_TRY block.
+  for (const GotoStmt *Goto : GotoStmts) {
+    if (!Goto->getLabel() || LabelDecls.count(Goto->getLabel()->getStmt()))
+      continue;
+    DiagnosticsEngine &DE = Ctx->getDiagnostics();
+    unsigned DiagID =
+      DE.getCustomDiagID(DiagnosticsEngine::Error,
+			 "unsafe goto statement is used inside PG_TRY block");
+      auto DB = DE.Report(Goto->getGotoLoc(), DiagID);
+      DB.AddSourceRange(
+          CharSourceRange::getCharRange(Goto->getSourceRange()));
+  }
+}
 
 class PgTryBlockMatcherCallback : public MatchFinder::MatchCallback {
 public:
@@ -44,14 +143,21 @@ public:
 
     if (const ReturnStmt *Return =
             Result.Nodes.getNodeAs<ReturnStmt>("ReturnInPgTryBlock")) {
-      // We've found a returnStmt inside PG_TRY block. Let's warn about it.
+      // We've found a return statement inside PG_TRY block. Let's warn about
+      // it.
       DiagnosticsEngine &DE = Ctx->getDiagnostics();
       unsigned DiagID =
           DE.getCustomDiagID(DiagnosticsEngine::Error,
-                             "return statement is used inside PG_TRY block");
+                             "unsafe return statement is used inside PG_TRY block");
       auto DB = DE.Report(Return->getReturnLoc(), DiagID);
       DB.AddSourceRange(
           CharSourceRange::getCharRange(Return->getSourceRange()));
+    } else if (const IfStmt *If =
+                   Result.Nodes.getNodeAs<IfStmt>("PgTryBlock")) {
+      const Stmt *Then = If->getThen();
+      CheckUnsafeBreakStmt(Then, Ctx);
+      CheckUnsafeContinueStmt(Then, Ctx);
+      CheckUnsafeGotoStmt(Then, Ctx);
     }
   }
 };
@@ -73,7 +179,10 @@ public:
                                      hasOperands(callExpr(callee(functionDecl(
                                                      hasName("__sigsetjmp")))),
                                                  integerLiteral(equals(0)))))),
-            hasThen(hasDescendant(returnStmt().bind("ReturnInPgTryBlock"))))
+            hasThen(eachOf(
+                forEachDescendant(returnStmt().bind("ReturnInPgTryBlock")),
+                anyOf(hasDescendant(breakStmt()), hasDescendant(continueStmt()),
+                      hasDescendant(gotoStmt())))))
             .bind("PgTryBlock");
 
     F.addMatcher(PgTry, &CB);
@@ -92,6 +201,8 @@ extern "C" __attribute__((visibility("default"))) void
 clang_registerCheckers(CheckerRegistry &registry) {
   registry.addChecker<ReturnInPgTryBlockChecker>(
       /*FullName=*/"alpha.postgres.ReturnInPgTryBlockChecker",
-      /*Desc=*/"Check if there're return statements in PG_TRY block",
+      /*Desc=*/
+      "Check if there're unsafe return/continue/break/goto statements in "
+      "PG_TRY block",
       /*DocsUri=*/"");
 }
