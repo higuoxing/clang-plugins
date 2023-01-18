@@ -46,7 +46,11 @@ static void CheckUnsafeBreakStmt(const Stmt *Then, ASTContext *Ctx) {
     const Stmt *CurrStmt = StmtQueue.front();
     StmtQueue.pop();
 
-    if (const BreakStmt *Break = llvm::dyn_cast<BreakStmt>(CurrStmt)) {
+    if (!CurrStmt)
+      continue;
+
+    if (const BreakStmt *Break =
+            llvm::dyn_cast_if_present<BreakStmt>(CurrStmt)) {
       // We've found a break statement inside PG_TRY block. Let's warn
       // about it.
       DiagnosticsEngine &DE = Ctx->getDiagnostics();
@@ -76,7 +80,11 @@ static void CheckUnsafeContinueStmt(const Stmt *Then, ASTContext *Ctx) {
     const Stmt *CurrStmt = StmtQueue.front();
     StmtQueue.pop();
 
-    if (const ContinueStmt *Continue = llvm::dyn_cast<ContinueStmt>(CurrStmt)) {
+    if (!CurrStmt)
+      continue;
+
+    if (const ContinueStmt *Continue =
+            llvm::dyn_cast_if_present<ContinueStmt>(CurrStmt)) {
       // We've found a continue statement inside PG_TRY block. Let's warn
       // about it.
       DiagnosticsEngine &DE = Ctx->getDiagnostics();
@@ -109,9 +117,14 @@ static void CheckUnsafeGotoStmt(const Stmt *Then, ASTContext *Ctx) {
     const Stmt *CurrStmt = StmtQueue.front();
     StmtQueue.pop();
 
-    if (const LabelStmt *Label = llvm::dyn_cast<LabelStmt>(CurrStmt)) {
+    if (!CurrStmt)
+      continue;
+
+    if (const LabelStmt *Label =
+            llvm::dyn_cast_if_present<LabelStmt>(CurrStmt)) {
       LabelDecls.insert(Label);
-    } else if (const GotoStmt *Goto = llvm::dyn_cast<GotoStmt>(CurrStmt)) {
+    } else if (const GotoStmt *Goto =
+                   llvm::dyn_cast_if_present<GotoStmt>(CurrStmt)) {
       GotoStmts.insert(Goto);
     }
 
@@ -126,11 +139,10 @@ static void CheckUnsafeGotoStmt(const Stmt *Then, ASTContext *Ctx) {
       continue;
     DiagnosticsEngine &DE = Ctx->getDiagnostics();
     unsigned DiagID =
-      DE.getCustomDiagID(DiagnosticsEngine::Error,
-			 "unsafe goto statement is used inside PG_TRY block");
-      auto DB = DE.Report(Goto->getGotoLoc(), DiagID);
-      DB.AddSourceRange(
-          CharSourceRange::getCharRange(Goto->getSourceRange()));
+        DE.getCustomDiagID(DiagnosticsEngine::Error,
+                           "unsafe goto statement is used inside PG_TRY block");
+    auto DB = DE.Report(Goto->getGotoLoc(), DiagID);
+    DB.AddSourceRange(CharSourceRange::getCharRange(Goto->getSourceRange()));
   }
 }
 
@@ -146,9 +158,9 @@ public:
       // We've found a return statement inside PG_TRY block. Let's warn about
       // it.
       DiagnosticsEngine &DE = Ctx->getDiagnostics();
-      unsigned DiagID =
-          DE.getCustomDiagID(DiagnosticsEngine::Error,
-                             "unsafe return statement is used inside PG_TRY block");
+      unsigned DiagID = DE.getCustomDiagID(
+          DiagnosticsEngine::Error,
+          "unsafe return statement is used inside PG_TRY block");
       auto DB = DE.Report(Return->getReturnLoc(), DiagID);
       DB.AddSourceRange(
           CharSourceRange::getCharRange(Return->getSourceRange()));
