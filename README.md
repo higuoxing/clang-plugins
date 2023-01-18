@@ -9,7 +9,28 @@ Collection of clang plugins that I wrote.
 
 2. ReturnInPgTryBlockChecker (Path insensitive checker based on AST-matcher):
 
-   `ReturnInPgTryBlockChecker` is used to check if there's a `return` statement in `PG_TRY()` block in projects based on Postgres. It will break PostgreSQL's error stacks.
+   `ReturnInPgTryBlockChecker` is used to check if there are unsafe `return`/`continue`/`break`/`goto` statements in `PG_TRY()` block in projects based on Postgres. It will break PostgreSQL's error stacks. E.g.,
+
+   ```c
+   label1:
+   PG_TRY();
+   {
+   label2:
+       return;       // Unsafe.
+	   break;        // Unsafe.
+	   continue;     // Unsafe.
+	   goto label1;  // Unsafe, because it's jumping out of PG_TRY block.
+	   for (;;)
+	   {
+	     break;
+		 continue;   // Safe. Will not warn about it.
+	   }
+	   goto label2;  // Safe. Will not warn about it.
+   }
+   PG_CATCH();
+   ...
+   PG_END_TRY();
+   ```
 
 ## Build
 
