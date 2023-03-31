@@ -3,6 +3,7 @@
 set(PG_CLANG_PLUGINS
     ListFreeChecker
     ReturnInPgTryBlockChecker
+    MismatchMallocChecker
     )
 
 set(ListFreeChecker_SOURCES
@@ -11,6 +12,10 @@ set(ListFreeChecker_SOURCES
 
 set(ReturnInPgTryBlockChecker_SOURCES
   ReturnInPgTryBlockChecker.cpp
+  )
+
+set(MismatchMallocChecker_SOURCES
+  MismatchMallocChecker.cpp
   )
 
 # CONFIGURE THE PLUGIN LIBRARIES
