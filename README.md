@@ -60,6 +60,14 @@ make -j`nproc`
      make -j`nproc`
    ```
 
+## Found issues:
+
+- ListFreeChecker:
+  - https://github.com/greenplum-db/gpdb/pull/14723
+
+- ReturnInPgTryBlock:
+  - https://www.postgresql.org/message-id/CACpMh+CMsGMRKFzFMm3bYTzQmMU5nfEEoEDU2apJcc4hid36AQ@mail.gmail.com
+
 ## License
 
 These plugins are licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
