@@ -1,7 +1,8 @@
-# clang-plugins
-Collection of clang plugins that I wrote.
+# Clang Plugins Collection
 
-## Contents
+> Collection of clang plugins that I wrote.
+
+## Plugins
 
 1. ListFreeChecker (Path sensitive checker):
 
@@ -34,6 +35,10 @@ Collection of clang plugins that I wrote.
 
 ## Build
 
+To use these plugins, you'll need to have LLVM 17 installed on your system. You can download LLVM from the official website [](https://llvm.org/releases/) or install it through your package manager.
+
+Once you have LLVM installed, you can build the plugins by running the following commands:
+
 ```bash
 git clone git@github.com:higuoxing/clang-plugins.git
 cd clang-plugins
@@ -43,7 +48,7 @@ cmake -DCT_CLANG_INSTALL_DIR=/<path>/<to>/<clang-install-dir>
 make -j`nproc`
 ```
 
-## Run
+## Usage
 
 1. Integrate with `scan-build`
 
@@ -54,3 +59,7 @@ make -j`nproc`
      -o <path>/<to>/<scan-build-reports> \
      make -j`nproc`
    ```
+
+## License
+
+These plugins are licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
