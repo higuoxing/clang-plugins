@@ -35,7 +35,7 @@
 
 ## Build
 
-To use these plugins, you'll need to have LLVM 17 installed on your system. You can download LLVM from the official website [](https://llvm.org/releases/) or install it through your package manager.
+To use these plugins, you'll need to have LLVM 15 installed on your system. You can download LLVM from the official website [](https://llvm.org/releases/) or install it through your package manager.
 
 Once you have LLVM installed, you can build the plugins by running the following commands:
 

@@ -38,7 +38,7 @@ public:
 
 } // end anonymous namespace
 
-SimpleListFreeChecker::SimpleListFreeChecker() : FreeFn({"pfree"}) {
+SimpleListFreeChecker::SimpleListFreeChecker() : FreeFn("pfree") {
   // Initialize the bug types.
   FreeListWithPFreeBugType.reset(
       new BugType(this, "Applying pfree() on a list", "Postgres API Error"));
