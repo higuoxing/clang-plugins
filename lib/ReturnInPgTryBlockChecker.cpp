@@ -15,22 +15,17 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/Expr.h"
-#include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/AST/Stmt.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/ASTMatchers/ASTMatchersInternal.h"
 #include "clang/Basic/Diagnostic.h"
-#include "clang/Basic/FileManager.h"
 #include "clang/Basic/SourceLocation.h"
-#include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/StaticAnalyzer/Core/Checker.h"
 #include "clang/StaticAnalyzer/Core/CheckerManager.h"
 #include "clang/StaticAnalyzer/Frontend/CheckerRegistry.h"
-#include "llvm/ADT/StringMap.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/raw_ostream.h"
 
 #include <queue>
 #include <unordered_set>
@@ -207,7 +202,7 @@ public:
 // Registration
 //-----------------------------------------------------------------------------
 extern "C" __attribute__((visibility("default")))
-const char clang_analyzerAPIVersionString[] = "15.0.0";
+const char clang_analyzerAPIVersionString[] = "17.0.0";
 
 extern "C" __attribute__((visibility("default"))) void
 clang_registerCheckers(CheckerRegistry &registry) {

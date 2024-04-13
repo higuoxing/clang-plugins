@@ -38,7 +38,7 @@ public:
 
 } // end anonymous namespace
 
-SimpleListFreeChecker::SimpleListFreeChecker() : FreeFn("pfree") {
+SimpleListFreeChecker::SimpleListFreeChecker() : FreeFn({"pfree"}) {
   // Initialize the bug types.
   FreeListWithPFreeBugType.reset(
       new BugType(this, "Applying pfree() on a list", "Postgres API Error"));
@@ -103,7 +103,7 @@ void SimpleListFreeChecker::reportInconsistentListFree(
 // You can double check that it is working/found by listing the available
 // checkers with the -analyzer-checker-help option.
 extern "C" __attribute__((visibility("default")))
-const char clang_analyzerAPIVersionString[] = "15.0.0";
+const char clang_analyzerAPIVersionString[] = "17.0.0";
 
 extern "C" __attribute__((visibility("default"))) void
 clang_registerCheckers(CheckerRegistry &registry) {
