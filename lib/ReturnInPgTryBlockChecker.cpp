@@ -202,7 +202,7 @@ public:
 // Registration
 //-----------------------------------------------------------------------------
 extern "C" __attribute__((visibility("default")))
-const char clang_analyzerAPIVersionString[] = "17.0.0";
+const char clang_analyzerAPIVersionString[] = CLANG_ANALYZER_API_VERSION_STRING;
 
 extern "C" __attribute__((visibility("default"))) void
 clang_registerCheckers(CheckerRegistry &registry) {
