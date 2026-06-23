@@ -87,3 +87,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 # available for the sub-projects.
 #===============================================================================
 add_subdirectory(lib)
+add_subdirectory(clang-tidy)
+
+#===============================================================================
+# 5. TESTING
+#===============================================================================
+enable_testing()
+add_test(NAME RunTests COMMAND bash ${CMAKE_SOURCE_DIR}/run_tests.sh)

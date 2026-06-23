@@ -18,15 +18,15 @@
    {
    label2:
        return;       // Unsafe.
-	   break;        // Unsafe.
-	   continue;     // Unsafe.
-	   goto label1;  // Unsafe, because it's jumping out of PG_TRY block.
-	   for (;;)
-	   {
-	     break;
-		 continue;   // Safe. Will not warn about it.
-	   }
-	   goto label2;  // Safe. Will not warn about it.
+       break;        // Unsafe.
+       continue;     // Unsafe.
+       goto label1;  // Unsafe, because it's jumping out of PG_TRY block.
+       for (;;)
+       {
+         break;
+         continue;   // Safe. Will not warn about it.
+       }
+       goto label2;  // Safe. Will not warn about it.
    }
    PG_CATCH();
    ...
@@ -50,12 +50,22 @@ make -j`nproc`
 
 ## Usage
 
-1. Integrate with `scan-build`
+1. Integrate with `clang-tidy` (Recommended)
+
+   We provide a `clang-tidy` module that includes both checks (`postgres-list-free` and `postgres-return-in-pg-try-block`). `clang-tidy` is generally faster and easier to integrate into IDEs and CI pipelines.
+
+   ```bash
+   clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
+     -checks='-*,postgres-*' \
+     <your-source-file.c> -- <compiler-flags>
+   ```
+
+2. Integrate with `scan-build` (Clang Static Analyzer)
 
    ```bash
    scan-build \
-     -load-plugin <path>/<to>/clang-plugins/build/lib/libReturnInPgTryBlockChecker.so -enable-checker alpha.postgres.ReturnInPgTryBlockChecker \
-     -load-plugin <path>/<to>/clang-plugins/build/lib/libListFreeChecker.so -enable-checker alpha.postgres.ListFreeChecker \
+     -load-plugin <path>/<to>/clang-plugins/build/lib/libReturnInPgTryBlockChecker.dylib -enable-checker alpha.postgres.ReturnInPgTryBlockChecker \
+     -load-plugin <path>/<to>/clang-plugins/build/lib/libListFreeChecker.dylib -enable-checker alpha.postgres.ListFreeChecker \
      -o <path>/<to>/<scan-build-reports> \
      make -j`nproc`
    ```
