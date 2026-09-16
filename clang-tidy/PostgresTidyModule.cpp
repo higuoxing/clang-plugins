@@ -1,6 +1,6 @@
 #include "clang-tidy/ClangTidyModule.h"
 #include "clang-tidy/ClangTidyModuleRegistry.h"
-#include "ListFreeCheck.h"
+#include "PallocRuntimeMulCheck.h"
 #include "ReturnInPgTryBlockCheck.h"
 
 namespace clang {
@@ -10,8 +10,8 @@ namespace postgres {
 class PostgresModule : public ClangTidyModule {
 public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
-    CheckFactories.registerCheck<ListFreeCheck>(
-        "pg-list-free");
+    CheckFactories.registerCheck<PallocRuntimeMulCheck>(
+        "pg-palloc-runtime-mul");
     CheckFactories.registerCheck<ReturnInPgTryBlockCheck>(
         "pg-return-in-pg-try-block");
   }
