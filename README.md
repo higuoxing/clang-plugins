@@ -10,7 +10,30 @@
 
    It does **not** warn about compile-time products (`palloc(16 * 4)`), `palloc(mul_size(...))` / `palloc_array()`, or multiplying by 0 or 1 (`n * sizeof(char)`).
 
-2. ReturnInPgTryBlockCheck (clang-tidy):
+2. MissingVolatileInPgTryCheck (clang-tidy):
+
+   `pg-missing-volatile-in-pg-try` flags automatic locals that are modified in `PG_TRY()` and then read in `PG_CATCH()` / `PG_FINALLY()` without being declared `volatile`. After `siglongjmp`, those values are indeterminate; GCC's `-Wclobbered` does not catch this reliably.
+
+   CATCH/FINALLY analysis is flow-sensitive (Clang CFG). A use is flagged only if a clobbered value can reach it: reassignment on every path (`x = …; use(x)`, `for (j = 1; …; j++)`, both sides of an if/else) is fine, but `if (c) x = 1; use(x)` is not. Taking the address (`&x`) is not treated as a read.
+
+   ```c
+   int fd = open(...);
+   PG_TRY();
+   {
+       ...
+       close(fd);
+       fd = -1;
+   }
+   PG_CATCH();
+   {
+       if (fd >= 0)   // fd must be volatile
+           close(fd);
+       PG_RE_THROW();
+   }
+   PG_END_TRY();
+   ```
+
+3. ReturnInPgTryBlockCheck (clang-tidy):
 
    `pg-return-in-pg-try-block` flags unsafe `return`/`continue`/`break`/`goto` statements in a `PG_TRY()` block. Those transfers break PostgreSQL's error stacks. E.g.,
 
@@ -53,7 +76,7 @@ make test
 
 ## Usage
 
-Load the clang-tidy module (`pg-return-in-pg-try-block` and `pg-palloc-runtime-mul`):
+Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-missing-volatile-in-pg-try`, and `pg-palloc-runtime-mul`):
 
 ```bash
 clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
@@ -65,6 +88,10 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
 
 - ReturnInPgTryBlock:
   - https://www.postgresql.org/message-id/CACpMh+CMsGMRKFzFMm3bYTzQmMU5nfEEoEDU2apJcc4hid36AQ@mail.gmail.com
+
+- MissingVolatileInPgTry:
+  - https://www.postgresql.org/message-id/13955.1422212567@sss.pgh.pa.us
+  - https://github.com/citusdata/citus/commit/ada3ba25072cc5be055b3bbdedfa2fe936443b0d
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)
