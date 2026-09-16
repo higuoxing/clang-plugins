@@ -11,9 +11,9 @@ class PostgresModule : public ClangTidyModule {
 public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
     CheckFactories.registerCheck<ListFreeCheck>(
-        "postgres-list-free");
+        "pg-list-free");
     CheckFactories.registerCheck<ReturnInPgTryBlockCheck>(
-        "postgres-return-in-pg-try-block");
+        "pg-return-in-pg-try-block");
   }
 };
 

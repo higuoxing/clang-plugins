@@ -52,11 +52,11 @@ make -j`nproc`
 
 1. Integrate with `clang-tidy` (Recommended)
 
-   We provide a `clang-tidy` module that includes both checks (`postgres-list-free` and `postgres-return-in-pg-try-block`). `clang-tidy` is generally faster and easier to integrate into IDEs and CI pipelines.
+   We provide a `clang-tidy` module that includes both checks (`pg-list-free` and `pg-return-in-pg-try-block`). `clang-tidy` is generally faster and easier to integrate into IDEs and CI pipelines.
 
    ```bash
    clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
-     -checks='-*,postgres-*' \
+     -checks='-*,pg-*' \
      <your-source-file.c> -- <compiler-flags>
    ```
 
