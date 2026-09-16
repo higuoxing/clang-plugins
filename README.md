@@ -4,13 +4,15 @@
 
 ## Plugins
 
-1. ListFreeChecker (Path sensitive checker):
+1. PallocRuntimeMulCheck (clang-tidy):
 
-   `ListFreeChecker` is used to check if we're freeing a `List *` object with `pfree()` in projects based on Postgres. Since in Postgres 13+, `List` is implemented in array, it makes non-sense to free a list header.
+   `pg-palloc-runtime-mul` flags `palloc()` / `repalloc()` / `MemoryContextAlloc()` family calls whose size argument is a runtime multiplication (`n * sizeof(T)`, `n * m`, …) instead of an overflow-checked helper such as `mul_size()`, `palloc_mul()`, or `palloc_array()`. Integer overflow in the size computation can wrap and request a too-small buffer.
 
-2. ReturnInPgTryBlockChecker (Path insensitive checker based on AST-matcher):
+   It does **not** warn about compile-time products (`palloc(16 * 4)`), `palloc(mul_size(...))` / `palloc_array()`, or multiplying by 0 or 1 (`n * sizeof(char)`).
 
-   `ReturnInPgTryBlockChecker` is used to check if there are unsafe `return`/`continue`/`break`/`goto` statements in `PG_TRY()` block in projects based on Postgres. It will break PostgreSQL's error stacks. E.g.,
+2. ReturnInPgTryBlockCheck (clang-tidy):
+
+   `pg-return-in-pg-try-block` flags unsafe `return`/`continue`/`break`/`goto` statements in a `PG_TRY()` block. Those transfers break PostgreSQL's error stacks. E.g.,
 
    ```c
    label1:
@@ -46,37 +48,27 @@ mkdir build
 cd build
 cmake -DCT_CLANG_INSTALL_DIR=/<path>/<to>/<clang-install-dir>
 make -j`nproc`
+make test
 ```
 
 ## Usage
 
-1. Integrate with `clang-tidy` (Recommended)
+Load the clang-tidy module (`pg-return-in-pg-try-block` and `pg-palloc-runtime-mul`):
 
-   We provide a `clang-tidy` module that includes both checks (`pg-list-free` and `pg-return-in-pg-try-block`). `clang-tidy` is generally faster and easier to integrate into IDEs and CI pipelines.
-
-   ```bash
-   clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
-     -checks='-*,pg-*' \
-     <your-source-file.c> -- <compiler-flags>
-   ```
-
-2. Integrate with `scan-build` (Clang Static Analyzer)
-
-   ```bash
-   scan-build \
-     -load-plugin <path>/<to>/clang-plugins/build/lib/libReturnInPgTryBlockChecker.dylib -enable-checker alpha.postgres.ReturnInPgTryBlockChecker \
-     -load-plugin <path>/<to>/clang-plugins/build/lib/libListFreeChecker.dylib -enable-checker alpha.postgres.ListFreeChecker \
-     -o <path>/<to>/<scan-build-reports> \
-     make -j`nproc`
-   ```
+```bash
+clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
+  -checks='-*,pg-*' \
+  <your-source-file.c> -- <compiler-flags>
+```
 
 ## Found issues:
 
-- ListFreeChecker:
-  - https://github.com/greenplum-db/gpdb/pull/14723
-
 - ReturnInPgTryBlock:
   - https://www.postgresql.org/message-id/CACpMh+CMsGMRKFzFMm3bYTzQmMU5nfEEoEDU2apJcc4hid36AQ@mail.gmail.com
+
+- PallocRuntimeMul (examples in current PostgreSQL sources):
+  - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)
+  - `src/backend/utils/fmgr/funcapi.c` (`palloc(numargs * sizeof(...))`)
 
 ## License
 

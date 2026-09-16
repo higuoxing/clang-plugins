@@ -5,7 +5,7 @@ set(LLVM_LINK_COMPONENTS
 
 add_library(PostgresTidyModule SHARED
   PostgresTidyModule.cpp
-  ListFreeCheck.cpp
+  PallocRuntimeMulCheck.cpp
   ReturnInPgTryBlockCheck.cpp
 )
 
