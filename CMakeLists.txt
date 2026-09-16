@@ -141,6 +141,11 @@ add_clang_tidy_check(
   pg-palloc-runtime-mul
   TIDY)
 add_clang_tidy_check(
+  pg-missing-volatile-in-pg-try
+  "${CMAKE_SOURCE_DIR}/test/test_missing_volatile_in_pg_try.c"
+  pg-missing-volatile-in-pg-try
+  TIDY)
+add_clang_tidy_check(
   pg-return-in-pg-try-block
   "${CMAKE_SOURCE_DIR}/test/test_return_in_pg_try.c"
   pg-return-in-pg-try-block

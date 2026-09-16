@@ -1,5 +1,6 @@
 #include "clang-tidy/ClangTidyModule.h"
 #include "clang-tidy/ClangTidyModuleRegistry.h"
+#include "MissingVolatileInPgTryCheck.h"
 #include "PallocRuntimeMulCheck.h"
 #include "ReturnInPgTryBlockCheck.h"
 
@@ -10,6 +11,8 @@ namespace postgres {
 class PostgresModule : public ClangTidyModule {
 public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
+    CheckFactories.registerCheck<MissingVolatileInPgTryCheck>(
+        "pg-missing-volatile-in-pg-try");
     CheckFactories.registerCheck<PallocRuntimeMulCheck>(
         "pg-palloc-runtime-mul");
     CheckFactories.registerCheck<ReturnInPgTryBlockCheck>(
