@@ -3,6 +3,7 @@
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Type.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "llvm/ADT/ArrayRef.h"
 
 using namespace clang::ast_matchers;
 
@@ -11,15 +12,41 @@ namespace tidy {
 namespace postgres {
 namespace {
 
-// Typedefs that convert silently (int vs uint32) but name different
-// quantities. Unlike a "any two typedefs differ" rule, only these
-// pairs are reported: Postgres mixes many integer typedefs on purpose
-// (Oid/RegProcedure, uint32/BlockNumber, ...).
-bool isIncompatibleTypedefPair(StringRef A, StringRef B) {
+// Typedefs that convert silently but name different quantities.
+// Only names that share a clique are reported. Postgres mixes many
+// integer typedefs on purpose; a HEAD scan dropped:
+//   Timestamp/TimestampTz (dozens of intentional conversions),
+//   AttrNumber/OffsetNumber (GIN stores attnum as OffsetNumber),
+//   CommandId/TransactionId (HeapTupleHeaderSetCmin(InvalidTransactionId)).
+struct TypedefClique {
+  llvm::ArrayRef<const char *const> Names;
+  const char *Hint;
+};
+
+const char *const kPageLoc[] = {"Buffer", "BlockNumber", "OffsetNumber"};
+const char *const kAttrLoc[] = {"AttrNumber", "Buffer", "BlockNumber"};
+const char *const kOidXid[] = {"Oid", "TransactionId"};
+
+const TypedefClique kCliques[] = {
+    {kPageLoc, "these identify different page/item locations"},
+    {kAttrLoc, "an attribute number is not a buffer or page number"},
+    {kOidXid, "an object id is not a transaction id"},
+};
+
+const char *incompatibleHint(StringRef A, StringRef B) {
   if (A.empty() || B.empty() || A == B)
-    return false;
-  return (A == "Buffer" && B == "BlockNumber") ||
-         (A == "BlockNumber" && B == "Buffer");
+    return nullptr;
+  for (const TypedefClique &C : kCliques) {
+    bool HasA = false;
+    bool HasB = false;
+    for (const char *N : C.Names) {
+      HasA |= A == N;
+      HasB |= B == N;
+    }
+    if (HasA && HasB)
+      return C.Hint;
+  }
+  return nullptr;
 }
 
 // Typedef as written, not the canonical integer. Do not look through
@@ -61,13 +88,12 @@ void TypedefMismatchCheck::check(const MatchFinder::MatchResult &Result) {
     // place so (BlockNumber)buf is treated as intentional.
     const StringRef ArgTy =
         typedefName(Arg->IgnoreParenImpCasts()->getType());
-    if (!isIncompatibleTypedefPair(ArgTy, ParamTy))
+    const char *Hint = incompatibleHint(ArgTy, ParamTy);
+    if (!Hint)
       continue;
 
-    diag(Arg->getExprLoc(),
-         "passing '%0' where '%1' is expected; Buffer is a buffer identifier, "
-         "BlockNumber is a page number")
-        << ArgTy << ParamTy;
+    diag(Arg->getExprLoc(), "passing '%0' where '%1' is expected; %2")
+        << ArgTy << ParamTy << Hint;
   }
 }
 

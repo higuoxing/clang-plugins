@@ -53,9 +53,15 @@
 
 4. TypedefMismatchCheck (clang-tidy):
 
-   `pg-typedef-mismatch` flags call arguments that mix PostgreSQL typedefs whose underlying types convert silently but whose values are not interchangeable. The first pair is `Buffer` (buffer identifier, `int`) vs `BlockNumber` (page number, `uint32`). Passing `stack->buffer` to `PredicateLockPage(..., BlockNumber, ...)` compiles without a warning and locks the wrong page.
+   `pg-typedef-mismatch` flags call arguments that mix PostgreSQL typedefs whose underlying types convert silently but whose values are not interchangeable. Reported cliques:
 
-   It does **not** warn about `BufferGetBlockNumber(buf)`, an explicit cast, or other integer typedefs (`uint32`, `Oid`, …). Those convert on purpose; a “any two typedefs differ” rule is too noisy.
+   - `Buffer` / `BlockNumber` / `OffsetNumber` (buffer id vs page number vs item offset)
+   - `AttrNumber` vs `Buffer` or `BlockNumber` (column number vs page/buffer)
+   - `Oid` vs `TransactionId`
+
+   Passing `stack->buffer` to `PredicateLockPage(..., BlockNumber, ...)` compiles without a warning and locks the wrong page.
+
+   It does **not** warn about `BufferGetBlockNumber(buf)`, an explicit cast, or other integer typedefs that Postgres mixes on purpose (`uint32`/`BlockNumber`, `Timestamp`/`TimestampTz`, GIN's `AttrNumber` stored as `OffsetNumber`, `HeapTupleHeaderSetCmin(InvalidTransactionId)`).
 
    ```c
    PredicateLockPage(rel, stack->buffer, snap);                 // Unsafe: Buffer where BlockNumber is expected.

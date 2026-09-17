@@ -9,7 +9,8 @@ namespace postgres {
 
 /// Flags call arguments that mix PostgreSQL typedefs whose underlying
 /// types convert silently but whose values are not interchangeable.
-/// The first pair is Buffer (buffer id) vs BlockNumber (page number).
+/// Cliques: Buffer/BlockNumber/OffsetNumber, AttrNumber vs Buffer or
+/// BlockNumber, and Oid vs TransactionId.
 class TypedefMismatchCheck : public ClangTidyCheck {
 public:
   TypedefMismatchCheck(StringRef Name, ClangTidyContext *Context)
