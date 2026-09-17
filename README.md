@@ -134,7 +134,7 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
 
 - TypedefMismatch:
   - https://www.postgresql.org/message-id/20230803165638.nyjgdqxg7korp54r@erthalion.local
-  - `src/backend/access/gin/ginget.c` historically passed `stack->buffer` (`Buffer`) to `PredicateLockPage(..., BlockNumber, ...)`
+  - `src/backend/access/gin/ginget.c` (`PredicateLockPage(..., stack->buffer, ...)`: `Buffer` where `BlockNumber` is required). Present in PostgreSQL 11.0 and 14.0; HEAD uses `BufferGetBlockNumber(stack->buffer)`.
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)
