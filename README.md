@@ -51,7 +51,24 @@
    PG_END_TRY();
    ```
 
-4. ReturnInPgTryBlockCheck (clang-tidy):
+4. TypedefMismatchCheck (clang-tidy):
+
+   `pg-typedef-mismatch` flags call arguments that mix PostgreSQL typedefs whose underlying types convert silently but whose values are not interchangeable. Reported cliques:
+
+   - `Buffer` / `BlockNumber` / `OffsetNumber` (buffer id vs page number vs item offset)
+   - `AttrNumber` vs `Buffer` or `BlockNumber` (column number vs page/buffer)
+   - `Oid` vs `TransactionId`
+
+   Passing `stack->buffer` to `PredicateLockPage(..., BlockNumber, ...)` compiles without a warning and locks the wrong page.
+
+   It does **not** warn about `BufferGetBlockNumber(buf)`, an explicit cast, or other integer typedefs that Postgres mixes on purpose (`uint32`/`BlockNumber`, `Timestamp`/`TimestampTz`, GIN's `AttrNumber` stored as `OffsetNumber`, `HeapTupleHeaderSetCmin(InvalidTransactionId)`).
+
+   ```c
+   PredicateLockPage(rel, stack->buffer, snap);                 // Unsafe: Buffer where BlockNumber is expected.
+   PredicateLockPage(rel, BufferGetBlockNumber(stack->buffer), snap);  // OK.
+   ```
+
+5. ReturnInPgTryBlockCheck (clang-tidy):
 
    `pg-return-in-pg-try-block` flags unsafe `return`/`continue`/`break`/`goto` statements in a `PG_TRY()` block. Those transfers break PostgreSQL's error stacks. E.g.,
 
@@ -94,7 +111,7 @@ make test
 
 ## Usage
 
-Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, and `pg-palloc-runtime-mul`):
+Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-palloc-runtime-mul`, and `pg-typedef-mismatch`):
 
 ```bash
 clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
@@ -114,6 +131,10 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
 - CatchMissingFlushOrRethrow:
   - https://www.postgresql.org/message-id/CAMEv5_v5Y+-D=CO1+qoe16sAmgC4sbbQjz+UtcHmB6zcgS+5Ew@mail.gmail.com
   - `contrib/jsonb_plpython/jsonb_plpython.c` (`PLyNumber_ToJsonbValue`: CATCH only `ereport(ERROR)`)
+
+- TypedefMismatch:
+  - https://www.postgresql.org/message-id/20230803165638.nyjgdqxg7korp54r@erthalion.local
+  - `src/backend/access/gin/ginget.c` (`PredicateLockPage(..., stack->buffer, ...)`: `Buffer` where `BlockNumber` is required). Present in PostgreSQL 11.0 and 14.0; HEAD uses `BufferGetBlockNumber(stack->buffer)`.
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)
