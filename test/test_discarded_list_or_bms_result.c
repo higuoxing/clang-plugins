@@ -2,6 +2,7 @@ void *lappend(void *list, void *datum);
 void *lappend_int(void *list, int datum);
 void *lcons(void *datum, void *list);
 void *list_delete_first(void *list);
+void *list_delete_cell(void *list, void *cell, void *prev);
 void *list_concat(void *list1, void *list2);
 void *list_copy(void *list);
 void *bms_add_member(void *a, int x);
@@ -21,6 +22,11 @@ void warn_lcons(void *list, void *x) {
 void warn_list_delete_first(void *list) {
   list_delete_first(list);
   // TIDY: :[[@LINE-1]]:3: warning: result of 'list_delete_first' discarded
+}
+
+void warn_list_delete_cell(void *list, void *cell, void *prev) {
+  list_delete_cell(list, cell, prev);
+  // TIDY: :[[@LINE-1]]:3: warning: result of 'list_delete_cell' discarded
 }
 
 void warn_list_concat(void *list, void *x) {

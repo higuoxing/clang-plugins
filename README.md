@@ -222,7 +222,8 @@ clang-tidy -load=<path>/<to>/pg_tidy/build/lib/libPostgresTidyModule.dylib \
 
 - DiscardedListOrBmsResult:
   - https://www.postgresql.org/message-id/e3753562-99cd-b65f-5aca-687dfd1ec2fc@2ndquadrant.com (`pg_nodiscard` on list APIs; forgetting `list = lappend(list, x)` is a perennial mistake)
-  - `src/backend/commands/lockcmds.c` / `src/backend/parser/analyze.c` (discarded list-API results that assumed the old linked-list header was stable). Fixed in PostgreSQL 14 by assigning the return value; HEAD also marks the recycling helpers `pg_nodiscard`.
+  - `src/backend/executor/nodeAgg.c` (`bms_del_member(colnos, …)` discarded, then `colnos` iterated). Present in PostgreSQL 11 and 14; HEAD assigns `colnos = bms_del_member(...)`. PostgreSQL 14's `pg_nodiscard` covers List helpers but not Bitmapset, so `-Wunused-result` missed it.
+  - `src/backend/commands/tablecmds.c` (`list_delete_cell(schema, rest, prev)` without assigning). Present in PostgreSQL 9.4 through 11; 14+ uses `columns = list_delete_nth_cell(...)`.
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)
