@@ -1,8 +1,10 @@
-# Clang Plugins Collection
+# pg_tidy
 
-> Collection of clang plugins that I wrote.
+> clang-tidy checks for PostgreSQL C.
 
-## Plugins
+The loadable module is still `libPostgresTidyModule`; check ids are `pg-*`.
+
+## Checks
 
 1. PallocRuntimeMulCheck (clang-tidy):
 
@@ -152,13 +154,11 @@
 
 ## Build
 
-To use these plugins, you'll need to have the latest stable LLVM (e.g., LLVM 21) installed on your system. You can download LLVM from the official website [](https://llvm.org/releases/) or install it through your package manager.
-
-Once you have LLVM installed, you can build the plugins by running the following commands:
+You need a recent stable LLVM (e.g. LLVM 21). Download it from [](https://llvm.org/releases/) or install it with your package manager, then:
 
 ```bash
-git clone git@github.com:higuoxing/clang-plugins.git
-cd clang-plugins
+git clone git@github.com:higuoxing/pg_tidy.git
+cd pg_tidy
 mkdir build
 cd build
 cmake -DCT_CLANG_INSTALL_DIR=/<path>/<to>/<clang-install-dir>
@@ -171,7 +171,7 @@ make test
 Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-missing-memory-context-restore`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, `pg-unsafe-in-crit-section`, and `pg-unbalanced-hold-interrupts`):
 
 ```bash
-clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
+clang-tidy -load=<path>/<to>/pg_tidy/build/lib/libPostgresTidyModule.dylib \
   -checks='-*,pg-*' \
   <your-source-file.c> -- <compiler-flags>
 ```
@@ -212,4 +212,4 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
 
 ## License
 
-These plugins are licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
+pg_tidy is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13.4)
-project(postgres-checkers)
+project(pg_tidy)
 
 find_program(LLVM_CONFIG "llvm-config")
 if(${LLVM_CONFIG} STREQUAL LLVM_CONFIG-NOTFOUND)
