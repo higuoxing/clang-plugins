@@ -159,6 +159,7 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
 - UnsafeInCritSection:
   - https://www.postgresql.org/message-id/E1WW2LR-0007Kr-7O@gemulon.postgresql.org (assert against palloc in a critical section)
   - https://www.postgresql.org/message-id/E1jgWNs-0000JL-Qg@gemulon.postgresql.org (palloc while holding a spinlock)
+  - `src/backend/postmaster/checkpointer.c` (`AbsorbFsyncRequests`: `palloc` inside `START_CRIT_SECTION()`). Present in PostgreSQL 9.4.0; 9.6+ allocates first, then enters the crit section so only the hashtable absorb panics on OOM.
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)

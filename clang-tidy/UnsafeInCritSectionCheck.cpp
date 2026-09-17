@@ -59,13 +59,12 @@ StringRef calleeName(const CallExpr *CE) {
   return FD ? FD->getName() : StringRef();
 }
 
-bool isSpinAcquireName(StringRef Name) {
-  return Name == "SpinLockAcquire" || Name == "s_lock";
-}
+// Track the SpinLock* wrappers, not s_lock/s_unlock. S_LOCK expands
+// to (TAS(lock) ? s_lock(...) : 0); treating s_lock as acquire would
+// leak a fake held lock when both ternary arms are walked.
+bool isSpinAcquireName(StringRef Name) { return Name == "SpinLockAcquire"; }
 
-bool isSpinReleaseName(StringRef Name) {
-  return Name == "SpinLockRelease" || Name == "s_unlock";
-}
+bool isSpinReleaseName(StringRef Name) { return Name == "SpinLockRelease"; }
 
 // Backend allocators that AssertNotInCriticalSection, plus the
 // overflow-checked wrappers and strdup/sprintf helpers that call them.
@@ -201,6 +200,21 @@ public:
       return St;
     }
 
+    if (const auto *CO = dyn_cast<ConditionalOperator>(S)) {
+      walk(CO->getCond(), St);
+      walk(CO->getTrueExpr(), St);
+      walk(CO->getFalseExpr(), St);
+      return St;
+    }
+
+    if (const auto *BO = dyn_cast<BinaryOperator>(S)) {
+      if (BO->getOpcode() == BO_LAnd || BO->getOpcode() == BO_LOr) {
+        walk(BO->getLHS(), St);
+        walk(BO->getRHS(), St);
+        return St;
+      }
+    }
+
     if (const auto *SE = dyn_cast<StmtExpr>(S))
       return walk(SE->getSubStmt(), St);
 
@@ -286,8 +300,7 @@ void UnsafeInCritSectionCheck::registerMatchers(MatchFinder *Finder) {
                     hasUnaryOperand(ignoringParenImpCasts(declRefExpr(
                         to(varDecl(hasName("CritSectionCount")))))))),
                 hasDescendant(callExpr(callee(functionDecl(hasAnyName(
-                    "SpinLockAcquire", "SpinLockRelease", "s_lock",
-                    "s_unlock")))))))
+                    "SpinLockAcquire", "SpinLockRelease")))))))
           .bind("func"),
       this);
 }

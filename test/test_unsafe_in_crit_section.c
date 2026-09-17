@@ -125,6 +125,24 @@ void ok_palloc_after_spin_release(void *lock) {
   palloc(8);
 }
 
+void warn_palloc_in_ternary(int c) {
+  START_CRIT_SECTION();
+  c ? palloc(8) : 0;
+  // TIDY: :[[@LINE-1]]:7: warning: allocation with 'palloc' in a critical section
+  END_CRIT_SECTION();
+}
+
+int s_lock(void *lock);
+void s_unlock(void *lock);
+
+// S_LOCK expands to (TAS(lock) ? s_lock(...) : 0). Walking both
+// ternary arms must not leak a fake held spinlock into later code.
+void ok_s_lock_ternary_does_not_leak(void *lock) {
+  (0 ? s_lock(lock) : 0);
+  s_unlock(lock);
+  palloc(8);
+}
+
 void ok_nested_crit(void) {
   START_CRIT_SECTION();
   START_CRIT_SECTION();
