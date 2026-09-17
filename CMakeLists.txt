@@ -150,3 +150,8 @@ add_clang_tidy_check(
   "${CMAKE_SOURCE_DIR}/test/test_return_in_pg_try.c"
   pg-return-in-pg-try-block
   CHECK)
+add_clang_tidy_check(
+  pg-catch-missing-flush-or-rethrow
+  "${CMAKE_SOURCE_DIR}/test/test_catch_missing_flush_or_rethrow.c"
+  pg-catch-missing-flush-or-rethrow
+  TIDY)
