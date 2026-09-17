@@ -11,6 +11,7 @@ add_library(PostgresTidyModule SHARED
   PallocRuntimeMulCheck.cpp
   ReturnInPgTryBlockCheck.cpp
   TypedefMismatchCheck.cpp
+  UnbalancedHoldInterruptsCheck.cpp
   UnsafeInCritSectionCheck.cpp
 )
 

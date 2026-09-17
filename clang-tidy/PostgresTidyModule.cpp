@@ -6,6 +6,7 @@
 #include "PallocRuntimeMulCheck.h"
 #include "ReturnInPgTryBlockCheck.h"
 #include "TypedefMismatchCheck.h"
+#include "UnbalancedHoldInterruptsCheck.h"
 #include "UnsafeInCritSectionCheck.h"
 
 namespace clang {
@@ -27,6 +28,8 @@ public:
         "pg-return-in-pg-try-block");
     CheckFactories.registerCheck<TypedefMismatchCheck>(
         "pg-typedef-mismatch");
+    CheckFactories.registerCheck<UnbalancedHoldInterruptsCheck>(
+        "pg-unbalanced-hold-interrupts");
     CheckFactories.registerCheck<UnsafeInCritSectionCheck>(
         "pg-unsafe-in-crit-section");
   }

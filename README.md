@@ -137,6 +137,19 @@
    }
    ```
 
+8. UnbalancedHoldInterruptsCheck (clang-tidy):
+
+   `pg-unbalanced-hold-interrupts` flags `HOLD_INTERRUPTS()` / `HOLD_CANCEL_INTERRUPTS()` that an early `return` skips past, so `RESUME_*` never runs on that path. A leaked `InterruptHoldoffCount` (or `QueryCancelHoldoffCount`) makes `CHECK_FOR_INTERRUPTS()` a no-op; cancel and die stay queued.
+
+   The walk is intra-procedural, like `pg-unsafe-in-crit-section`. `do { ... } while (0)` (`RESUME_INTERRUPTS`) leaks depth; an `if` that HOLDs on one branch does not. Acquire-style helpers that HOLD and return still held (`LWLockAcquire`) have no later `RESUME` in the same function and are left alone.
+
+   ```c
+   HOLD_INTERRUPTS();
+   if (failed)
+       return;            // Unsafe: skips RESUME_INTERRUPTS.
+   RESUME_INTERRUPTS();
+   ```
+
 ## Build
 
 To use these plugins, you'll need to have the latest stable LLVM (e.g., LLVM 21) installed on your system. You can download LLVM from the official website [](https://llvm.org/releases/) or install it through your package manager.
@@ -155,7 +168,7 @@ make test
 
 ## Usage
 
-Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-missing-memory-context-restore`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, and `pg-unsafe-in-crit-section`):
+Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-missing-memory-context-restore`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, `pg-unsafe-in-crit-section`, and `pg-unbalanced-hold-interrupts`):
 
 ```bash
 clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
@@ -188,6 +201,10 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
   - https://www.postgresql.org/message-id/E1WW2LR-0007Kr-7O@gemulon.postgresql.org (assert against palloc in a critical section)
   - https://www.postgresql.org/message-id/E1jgWNs-0000JL-Qg@gemulon.postgresql.org (palloc while holding a spinlock)
   - `src/backend/postmaster/checkpointer.c` (`AbsorbFsyncRequests`: `palloc` inside `START_CRIT_SECTION()`). Present in PostgreSQL 9.4.0; 9.6+ allocates first, then enters the crit section so only the hashtable absorb panics on OOM.
+
+- UnbalancedHoldInterrupts:
+  - https://www.postgresql.org/message-id/19557-d88cb23f38eb9b91@postgresql.org (leaked `InterruptHoldoffCount` hangs a backend in ParallelFinish; cancel/die never run)
+  - `src/backend/tcop/postgres.c` (`SocketBackend`: `HOLD_CANCEL_INTERRUPTS()` then `return` on client EOF without `RESUME_CANCEL_INTERRUPTS()`). Present in PostgreSQL 9.6 through HEAD; the caller then `proc_exit(0)`, so the leaked cancel holdoff does not outlive the backend.
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)

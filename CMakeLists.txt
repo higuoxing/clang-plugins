@@ -170,3 +170,8 @@ add_clang_tidy_check(
   "${CMAKE_SOURCE_DIR}/test/test_unsafe_in_crit_section.c"
   pg-unsafe-in-crit-section
   TIDY)
+add_clang_tidy_check(
+  pg-unbalanced-hold-interrupts
+  "${CMAKE_SOURCE_DIR}/test/test_unbalanced_hold_interrupts.c"
+  pg-unbalanced-hold-interrupts
+  TIDY)
