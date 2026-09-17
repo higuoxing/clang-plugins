@@ -1,6 +1,7 @@
 #include "clang-tidy/ClangTidyModule.h"
 #include "clang-tidy/ClangTidyModuleRegistry.h"
 #include "CatchMissingFlushOrRethrowCheck.h"
+#include "DiscardedListOrBmsResultCheck.h"
 #include "MissingMemoryContextRestoreCheck.h"
 #include "MissingVolatileInPgTryCheck.h"
 #include "PallocRuntimeMulCheck.h"
@@ -18,6 +19,8 @@ public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
     CheckFactories.registerCheck<CatchMissingFlushOrRethrowCheck>(
         "pg-catch-missing-flush-or-rethrow");
+    CheckFactories.registerCheck<DiscardedListOrBmsResultCheck>(
+        "pg-discarded-list-or-bms-result");
     CheckFactories.registerCheck<MissingMemoryContextRestoreCheck>(
         "pg-missing-memory-context-restore");
     CheckFactories.registerCheck<MissingVolatileInPgTryCheck>(

@@ -152,6 +152,20 @@ The loadable module is still `libPostgresTidyModule`; check ids are `pg-*`.
    RESUME_INTERRUPTS();
    ```
 
+9. DiscardedListOrBmsResultCheck (clang-tidy):
+
+   `pg-discarded-list-or-bms-result` flags calls to List / Bitmapset helpers that recycle their input (`lappend`, `lcons`, `list_concat`, `list_delete*`, `bms_add_member`, `bms_join`, …) when the return value is discarded. Those functions may `repalloc` or replace the pointer; the caller must write `list = lappend(list, x)` (or equivalent). An explicit `(void)` cast is treated as a deliberate ignore.
+
+   Copy / union helpers that always allocate a new object (`list_copy`, `list_concat_copy`, `bms_copy`, `bms_union`, …) are not flagged. The diagnostic matches `pg_nodiscard` / `-Wunused-result`: using the pointer as a condition or argument is quiet, even though the original variable may still be stale.
+
+   Before PostgreSQL 13, `List` was a linked list of cells and `lappend` of a non-`NIL` list usually returned the same header, so discarding the result was often accidentally correct. Those are false positives on old trees; from 13 onward the array-backed `List` can move, so the assignment is required.
+
+   ```c
+   lappend(list, x);          // Unsafe: list may now be stale.
+   list = lappend(list, x);   // OK.
+   (void) lappend(list, x);   // OK: deliberate ignore.
+   ```
+
 ## Build
 
 You need a recent stable LLVM (e.g. LLVM 21). Download it from [](https://llvm.org/releases/) or install it with your package manager, then:
@@ -168,7 +182,7 @@ make test
 
 ## Usage
 
-Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-missing-memory-context-restore`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, `pg-unsafe-in-crit-section`, and `pg-unbalanced-hold-interrupts`):
+Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-missing-memory-context-restore`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, `pg-unsafe-in-crit-section`, `pg-unbalanced-hold-interrupts`, and `pg-discarded-list-or-bms-result`):
 
 ```bash
 clang-tidy -load=<path>/<to>/pg_tidy/build/lib/libPostgresTidyModule.dylib \
@@ -205,6 +219,10 @@ clang-tidy -load=<path>/<to>/pg_tidy/build/lib/libPostgresTidyModule.dylib \
 - UnbalancedHoldInterrupts:
   - https://www.postgresql.org/message-id/19557-d88cb23f38eb9b91@postgresql.org (leaked `InterruptHoldoffCount` hangs a backend in ParallelFinish; cancel/die never run)
   - `src/backend/tcop/postgres.c` (`SocketBackend`: `HOLD_CANCEL_INTERRUPTS()` then `return` on client EOF without `RESUME_CANCEL_INTERRUPTS()`). Present in PostgreSQL 9.6 through HEAD; the caller then `proc_exit(0)`, so the leaked cancel holdoff does not outlive the backend.
+
+- DiscardedListOrBmsResult:
+  - https://www.postgresql.org/message-id/e3753562-99cd-b65f-5aca-687dfd1ec2fc@2ndquadrant.com (`pg_nodiscard` on list APIs; forgetting `list = lappend(list, x)` is a perennial mistake)
+  - `src/backend/commands/lockcmds.c` / `src/backend/parser/analyze.c` (discarded list-API results that assumed the old linked-list header was stable). Fixed in PostgreSQL 14 by assigning the return value; HEAD also marks the recycling helpers `pg_nodiscard`.
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)

@@ -175,3 +175,8 @@ add_clang_tidy_check(
   "${CMAKE_SOURCE_DIR}/test/test_unbalanced_hold_interrupts.c"
   pg-unbalanced-hold-interrupts
   TIDY)
+add_clang_tidy_check(
+  pg-discarded-list-or-bms-result
+  "${CMAKE_SOURCE_DIR}/test/test_discarded_list_or_bms_result.c"
+  pg-discarded-list-or-bms-result
+  TIDY)
