@@ -9,6 +9,7 @@ add_library(PostgresTidyModule SHARED
   MissingVolatileInPgTryCheck.cpp
   PallocRuntimeMulCheck.cpp
   ReturnInPgTryBlockCheck.cpp
+  TypedefMismatchCheck.cpp
 )
 
 target_link_libraries(PostgresTidyModule

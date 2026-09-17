@@ -155,3 +155,8 @@ add_clang_tidy_check(
   "${CMAKE_SOURCE_DIR}/test/test_catch_missing_flush_or_rethrow.c"
   pg-catch-missing-flush-or-rethrow
   TIDY)
+add_clang_tidy_check(
+  pg-typedef-mismatch
+  "${CMAKE_SOURCE_DIR}/test/test_typedef_mismatch.c"
+  pg-typedef-mismatch
+  TIDY)

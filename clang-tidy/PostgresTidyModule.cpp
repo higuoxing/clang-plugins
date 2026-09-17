@@ -4,6 +4,7 @@
 #include "MissingVolatileInPgTryCheck.h"
 #include "PallocRuntimeMulCheck.h"
 #include "ReturnInPgTryBlockCheck.h"
+#include "TypedefMismatchCheck.h"
 
 namespace clang {
 namespace tidy {
@@ -20,6 +21,8 @@ public:
         "pg-palloc-runtime-mul");
     CheckFactories.registerCheck<ReturnInPgTryBlockCheck>(
         "pg-return-in-pg-try-block");
+    CheckFactories.registerCheck<TypedefMismatchCheck>(
+        "pg-typedef-mismatch");
   }
 };
 
