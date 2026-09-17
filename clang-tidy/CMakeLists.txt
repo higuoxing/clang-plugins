@@ -10,6 +10,7 @@ add_library(PostgresTidyModule SHARED
   PallocRuntimeMulCheck.cpp
   ReturnInPgTryBlockCheck.cpp
   TypedefMismatchCheck.cpp
+  UnsafeInCritSectionCheck.cpp
 )
 
 target_link_libraries(PostgresTidyModule

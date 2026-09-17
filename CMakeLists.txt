@@ -160,3 +160,8 @@ add_clang_tidy_check(
   "${CMAKE_SOURCE_DIR}/test/test_typedef_mismatch.c"
   pg-typedef-mismatch
   TIDY)
+add_clang_tidy_check(
+  pg-unsafe-in-crit-section
+  "${CMAKE_SOURCE_DIR}/test/test_unsafe_in_crit_section.c"
+  pg-unsafe-in-crit-section
+  TIDY)

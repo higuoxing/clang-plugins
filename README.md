@@ -68,7 +68,27 @@
    PredicateLockPage(rel, BufferGetBlockNumber(stack->buffer), snap);  // OK.
    ```
 
-5. ReturnInPgTryBlockCheck (clang-tidy):
+5. UnsafeInCritSectionCheck (clang-tidy):
+
+   `pg-unsafe-in-crit-section` flags operations that are illegal between `START_CRIT_SECTION()` / `END_CRIT_SECTION()`, or while a spinlock is held.
+
+   In a critical section, `palloc()` / `repalloc()` / `MemoryContextAlloc()` (and the strdup/sprintf helpers) are forbidden: allocation failure is promoted to PANIC. `MemoryContextAlloc(ErrorContext, ...)` is allowed (`ErrorContext` is marked `allowInCritSection`). `elog(ERROR)` in a crit section is **not** flagged: core Postgres uses it as an invariant failure that should PANIC.
+
+   While holding a spinlock, both allocations and `ereport`/`elog` at `ERROR` or `FATAL` are flagged: they can leave the lock stuck. `WARNING` and `PANIC` are left alone.
+
+   The walk is intra-procedural. `do { ... } while (0)` statement macros (`END_CRIT_SECTION`, `PGSTAT_BEGIN_WRITE_ACTIVITY`) leak region depth to the caller; an `if` that starts a crit section on only one branch does not.
+
+   ```c
+   START_CRIT_SECTION();
+   palloc(8);              // Unsafe: OOM becomes PANIC.
+   END_CRIT_SECTION();
+
+   SpinLockAcquire(&lock);
+   palloc(8);              // Unsafe: ERROR would leave the lock stuck.
+   SpinLockRelease(&lock);
+   ```
+
+6. ReturnInPgTryBlockCheck (clang-tidy):
 
    `pg-return-in-pg-try-block` flags unsafe `return`/`continue`/`break`/`goto` statements in a `PG_TRY()` block. Those transfers break PostgreSQL's error stacks. E.g.,
 
@@ -111,7 +131,7 @@ make test
 
 ## Usage
 
-Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-palloc-runtime-mul`, and `pg-typedef-mismatch`):
+Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, and `pg-unsafe-in-crit-section`):
 
 ```bash
 clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
@@ -135,6 +155,10 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
 - TypedefMismatch:
   - https://www.postgresql.org/message-id/20230803165638.nyjgdqxg7korp54r@erthalion.local
   - `src/backend/access/gin/ginget.c` (`PredicateLockPage(..., stack->buffer, ...)`: `Buffer` where `BlockNumber` is required). Present in PostgreSQL 11.0 and 14.0; HEAD uses `BufferGetBlockNumber(stack->buffer)`.
+
+- UnsafeInCritSection:
+  - https://www.postgresql.org/message-id/E1WW2LR-0007Kr-7O@gemulon.postgresql.org (assert against palloc in a critical section)
+  - https://www.postgresql.org/message-id/E1jgWNs-0000JL-Qg@gemulon.postgresql.org (palloc while holding a spinlock)
 
 - PallocRuntimeMul (examples in current PostgreSQL sources):
   - `src/fe_utils/astreamer_gzip.c` (`palloc(items * size)`)
