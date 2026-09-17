@@ -6,6 +6,7 @@ set(LLVM_LINK_COMPONENTS
 add_library(PostgresTidyModule SHARED
   PostgresTidyModule.cpp
   CatchMissingFlushOrRethrowCheck.cpp
+  MissingMemoryContextRestoreCheck.cpp
   MissingVolatileInPgTryCheck.cpp
   PallocRuntimeMulCheck.cpp
   ReturnInPgTryBlockCheck.cpp

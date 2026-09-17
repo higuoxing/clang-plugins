@@ -146,6 +146,11 @@ add_clang_tidy_check(
   pg-missing-volatile-in-pg-try
   TIDY)
 add_clang_tidy_check(
+  pg-missing-memory-context-restore
+  "${CMAKE_SOURCE_DIR}/test/test_missing_memory_context_restore.c"
+  pg-missing-memory-context-restore
+  TIDY)
+add_clang_tidy_check(
   pg-return-in-pg-try-block
   "${CMAKE_SOURCE_DIR}/test/test_return_in_pg_try.c"
   pg-return-in-pg-try-block

@@ -113,6 +113,30 @@
    PG_END_TRY();
    ```
 
+7. MissingMemoryContextRestoreCheck (clang-tidy):
+
+   `pg-missing-memory-context-restore` flags `PG_CATCH()` blocks that continue after an error without switching away from `ErrorContext`. `longjmp` lands in `ErrorContext`; without `MemoryContextSwitchTo()` (or `PG_RE_THROW()` / `ReThrowError()` / `ereport(ERROR)`), later `palloc`s and the caller's `CurrentMemoryContext` stay on `ErrorContext`.
+
+   `PG_FINALLY()` is ignored. Same-translation-unit helpers that switch context, the usual PL `*subtrans_abort*` wrappers, and transaction abort/start helpers that restore context (`AbortOutOfAnyTransaction`, `AbortCurrentTransaction`, `StartTransactionCommand`, `RollbackAndReleaseCurrentSubTransaction`) are accepted. An assignment to `CurrentMemoryContext` counts as a restore.
+
+   ```c
+   PG_TRY();
+   {
+       ...
+   }
+   PG_CATCH();
+   {
+       FlushErrorState();  // Unsafe: still in ErrorContext.
+   }
+   PG_END_TRY();
+
+   PG_CATCH();
+   {
+       MemoryContextSwitchTo(oldcontext);  // OK.
+       FlushErrorState();
+   }
+   ```
+
 ## Build
 
 To use these plugins, you'll need to have the latest stable LLVM (e.g., LLVM 21) installed on your system. You can download LLVM from the official website [](https://llvm.org/releases/) or install it through your package manager.
@@ -131,7 +155,7 @@ make test
 
 ## Usage
 
-Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, and `pg-unsafe-in-crit-section`):
+Load the clang-tidy module (`pg-return-in-pg-try-block`, `pg-catch-missing-flush-or-rethrow`, `pg-missing-volatile-in-pg-try`, `pg-missing-memory-context-restore`, `pg-palloc-runtime-mul`, `pg-typedef-mismatch`, and `pg-unsafe-in-crit-section`):
 
 ```bash
 clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib \
@@ -151,6 +175,10 @@ clang-tidy -load=<path>/<to>/clang-plugins/build/lib/libPostgresTidyModule.dylib
 - CatchMissingFlushOrRethrow:
   - https://www.postgresql.org/message-id/CAMEv5_v5Y+-D=CO1+qoe16sAmgC4sbbQjz+UtcHmB6zcgS+5Ew@mail.gmail.com
   - `contrib/jsonb_plpython/jsonb_plpython.c` (`PLyNumber_ToJsonbValue`: CATCH only `ereport(ERROR)`)
+
+- MissingMemoryContextRestore:
+  - https://www.postgresql.org/message-id/CANerzAd_S-yQ+L3e8hPp+as7eJWoTJ9sXw0jbV5AKTarrz0igg@mail.gmail.com
+  - `src/backend/utils/adt/xml.c` (`wellformed_xml`: CATCH only `FlushErrorState()`, leaving `CurrentMemoryContext` as `ErrorContext`). Present in PostgreSQL 9.4 through 16; HEAD uses `ErrorSaveContext` instead of `PG_CATCH`.
 
 - TypedefMismatch:
   - https://www.postgresql.org/message-id/20230803165638.nyjgdqxg7korp54r@erthalion.local
